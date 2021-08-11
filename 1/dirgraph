@@ -1,0 +1,325 @@
+#!/bin/sh
+
+POSIXLY_CORRECT=yes
+
+# Funckia na vypis #
+printf_new() {
+	number=$1
+	minus=1
+
+	while [	"$number" -ne 0 ]
+	do
+		printf "#"
+		number=$(( $number - $minus ))
+	done	
+	printf "\n"	
+}
+
+# Funkcia na vypis -n -t
+function1(){
+	numOfFiles=$1
+	terminalWidth=$2
+	
+	if test "$numOfFiles" -gt "$terminalWidth"
+	then
+		printf_new "$terminalWidth"
+	elif test "$numOfFiles" -eq 0
+	then
+		printf "\n"
+	else
+		printf_new "$numOfFiles"
+	fi
+}
+
+# Funkcia na vypis -n !-t
+function2(){
+	numOfFiles=$1
+	
+	if test "$numOfFiles" -gt 67
+	then
+		printf_new  67
+	elif test "$numOfFiles" -eq 0
+	then
+		printf "\n"
+	else
+		printf_new "$numOfFiles"
+	fi
+}
+
+# Funkcia na vypis !-n
+function3(){
+	numOfFiles=$1
+
+	if test "$numOfFiles" -eq 0
+	then
+		printf "\n"
+	else
+		printf_new "$numOfFiles"
+	fi
+}
+
+# Cyklus while, pre spracovanie argumentov
+while [ "$#" != "0" ]
+do
+	case "$1" in
+		"-i")	# Zadany argument -i
+			if test -n "$regular_expression"	# Ak je regex neprazdny a je zadany argument -i
+			then
+				printf "wrong input argument - multiple -i switchers\n" >&2 # STDOUT do STDERR
+				exit 3
+			else	# Ak chceme urcit regex
+				if test "$2" != ""	# Test, ci ma nasledujuci argument [regex]
+				then
+					regular_expression=$2		# Priradenie regexu
+					shift 1
+				else
+					printf "wrong input argument - -i has no regex\n" >&2
+					exit 4
+				fi
+			fi
+			;;
+		"-n")	# Zadany argument -n
+			if test -n "$normalization" # Ak argument -n uz zadany bol
+			then
+				printf "wrong input argument - multiple -n switchers" >&2
+				exit 3
+			else	# Normalizacia bola zadana
+				normalization="true"
+			fi
+			;;
+		
+		*)	# Predpokladana zadana cesta
+			if test -n "$directory"
+			then	# Cesta uz bola zadana
+				printf "wrong input argument - multiple directories" >&2
+				exit 3
+			else	# Zadanie novej cesty
+				if test -d "$1"	# Ak cesta existuje
+				then
+					directory=$1
+				else	# Ak je cesta chybna
+					printf "wrong input argument - directory not found" >&2
+					exit 4
+				fi
+			fi
+	esac
+	
+	shift 1	# Posun o 1 argument
+done
+
+# Ak nebola zadana cesta, tak nou je aktualna
+if test -z "$directory" 
+then
+	directory=$( pwd )
+elif test "$directory" = "."
+then
+	directory=$( pwd )
+fi
+
+# Zistovanie poctu suborov v danych velkostiach
+numOfFiles=$( find "$directory" -name "*" -type f | wc -l )
+
+numOfFiles0=$( find "$directory" -type f                -size  -100c     | wc -l )
+numOfFiles1=$( find "$directory" -type f  -size  +100c  -size  -1024c    | wc -l )
+numOfFiles2=$( find "$directory" -type f  -size  +1k    -size  -10k      | wc -l )
+numOfFiles3=$( find "$directory" -type f  -size  +10k   -size  -100k     | wc -l )
+numOfFiles4=$( find "$directory" -type f  -size  +100k  -size  -1024k    | wc -l )
+numOfFiles5=$( find "$directory" -type f  -size  +1M    -size  -10M      | wc -l )
+numOfFiles6=$( find "$directory" -type f  -size  +10M   -size  -100M     | wc -l )
+numOfFiles7=$( find "$directory" -type f  -size  +100M  -size  -1024M    | wc -l )
+numOfFiles8=$( find "$directory" -type f  -size  +1G                     | wc -l )
+
+# Zistovanie poctu ciest
+numOfDirectories=$( find "$directory" -type d | wc -l )
+
+
+# Ak bol zadany argument -i	
+# Zistovanie poctu suborov alebo ciest, ktore maju byt ignorovane v danych velkostiach
+if test -n "$regular_expression"
+then
+	# Kontrola, ci je regex korenovy adresar
+	STR="$(echo "$directory" | awk -F/ '{print $NF}')" # Ziskanie nazvu koncoveho adresara
+ 
+	if echo "$STR" | grep -qE --regexp="$regular_expression"
+	then
+		printf "wrong input argument - root directory contains regex" >&2
+		exit 3
+	fi	
+	
+	# Celkovy pocet suborov
+	numOfBlocked=$( find "$directory" -name "*$regular_expression*" -type f  | wc -l )
+	# Odcitanie suborov	
+	numOfFiles=$(( $numOfFiles - $numOfBlocked ))
+	
+	numOfBlocked0=$( find "$directory" -name "*$regular_expression*" -type f               -size  -100c  | wc -l )
+	numOfBlocked1=$( find "$directory" -name "*$regular_expression*" -type f -size  +100c  -size  -1k    | wc -l )
+	numOfBlocked2=$( find "$directory" -name "*$regular_expression*" -type f -size  +1k    -size  -10k   | wc -l )
+	numOfBlocked3=$( find "$directory" -name "*$regular_expression*" -type f -size  +10k   -size  -100k  | wc -l )
+	numOfBlocked4=$( find "$directory" -name "*$regular_expression*" -type f -size  +100k  -size  -1M    | wc -l )
+	numOfBlocked5=$( find "$directory" -name "*$regular_expression*" -type f -size  +1M    -size  -10M   | wc -l )
+	numOfBlocked6=$( find "$directory" -name "*$regular_expression*" -type f -size  +10M   -size  -100M  | wc -l )
+	numOfBlocked7=$( find "$directory" -name "*$regular_expression*" -type f -size  +100M  -size  -1G    | wc -l )
+	numOfBlocked8=$( find "$directory" -name "*$regular_expression*" -type f -size  +1G                  | wc -l )
+	
+	# Odcitanie blokovanych suborov
+	numOfFiles0=$(( $numOfFiles0 - $numOfBlocked0 ))
+	numOfFiles1=$(( $numOfFiles1 - $numOfBlocked1 ))
+	numOfFiles2=$(( $numOfFiles2 - $numOfBlocked2 ))
+	numOfFiles3=$(( $numOfFiles3 - $numOfBlocked3 ))
+	numOfFiles4=$(( $numOfFiles4 - $numOfBlocked4 ))
+	numOfFiles5=$(( $numOfFiles5 - $numOfBlocked5 ))
+	numOfFiles6=$(( $numOfFiles6 - $numOfBlocked6 ))
+	numOfFiles7=$(( $numOfFiles7 - $numOfBlocked7 ))
+	numOfFiles8=$(( $numOfFiles8 - $numOfBlocked8 ))
+	
+	# Pocet ignorovanych ciest
+	numOfBlockedDirectories=$(find "$directory" -name "*$regular_expression*" -type d  | wc -l)	
+	# Odcitanie blokovanych ciest
+	numOfDirectories=$(( $numOfDirectories - $numOfBlockedDirectories ))
+fi
+
+# Odcitanie, aby na eve neukazovalo medzeru ? 
+numOfDirectories=$(( $numOfDirectories - 0 ))
+numOfFiles=$(( $numOfFiles - 0 ))
+
+
+
+if test ! -z "$normalization" 
+then
+	if [ -t 1 ]
+	then
+		# Sirka terminalu
+		width=$( tput cols )
+		minus=12
+		terminalWidth=$(( $width - $minus ))
+
+		printf 'Root directory: %s\n' "$directory"
+		printf 'Directories: %s\n' "$numOfDirectories"
+		printf 'All files: %s\n' "$numOfFiles"
+		printf 'File size histogram:\n'
+		
+		# 100 B
+		printf "  <100 B  : "
+		function1 "$numOfFiles0" "$terminalWidth"
+
+		# 1 KiB
+		printf "  <1 KiB  : "
+		function1 "$numOfFiles1" "$terminalWidth"
+	
+		# 10 KiB
+		printf "  <10 KiB : "
+		function1 "$numOfFiles2" "$terminalWidth"
+	
+		# 100 KiB
+		printf "  <100 KiB: "
+		function1 "$numOfFiles3" "$terminalWidth"
+
+		# 1 MiB
+		printf "  <1 MiB  : "
+		function1 "$numOfFiles4" "$terminalWidth"
+
+		# 10 MiB
+		printf "  <10 MiB : "
+		function1 "$numOfFiles5" "$terminalWidth"
+		
+		# 100 MiB
+		printf "  <100 MiB: "
+		function1 "$numOfFiles6" "$terminalWidth"
+		
+		# 1 GiB
+		printf "  <1 GiB  : "
+		function1 "$numOfFiles7" "$terminalWidth"
+
+		# >= 1 GiB
+		printf "  >=1 GiB : "
+		function1 "$numOfFiles8" "$terminalWidth"	
+
+	# Ak niesme v terminali -> sirka riadku je 79
+	else
+		printf 'Root directory: %s\n' "$directory"
+                printf 'Directories: %s\n' "$numOfDirectories"
+                printf 'All files: %s\n' "$numOfFiles"
+                printf 'File size histogram:\n'
+		
+		# 100 B
+		printf "  <100 B: "
+		function2 "$numOfFiles0"
+
+		# 1 KiB
+		printf "  <1 KiB : "
+		function2 "$numOfFiles1"
+	
+		# 10 KiB		
+		printf "  <10 KiB : "
+		function2 "$numOfFiles2"
+
+		# 100 KiB
+		printf "  <100 KiB : "
+		function2 "$numOfFiles3"
+
+		# 1 MiB
+		printf "  <1 MiB : "
+		function2 "$numOfFiles4"
+
+		# 10 MiB
+		printf "  <10 MiB : "
+		function2 "$numOfFiles5"
+
+		# 100 MiB	
+		printf "  <100 MiB : "
+		function2 "$numOfFiles6"
+
+		# 1 GiB
+		printf "  <1 GiB : "
+		function2 "$numOfFiles7"
+
+		# >= 1 GiB
+		printf "  >=1 GiB : "
+		function2 "$numOfFiles8"
+	fi
+
+# Ak -n argument zadany nieje
+else
+	printf 'Root directory: %s\n' "$directory"
+        printf 'Directories: %s\n' "$numOfDirectories"
+        printf 'All files: %s\n' "$numOfFiles"
+        printf 'File size histogram:\n'
+	
+	# 100 B
+	printf "  <100 B  : "
+	function3 "$numOfFiles0"
+	
+	# 1 KiB
+	printf "  <1 KiB  : "
+	function3 "$numOfFiles1"
+
+	# 10 KiB
+	printf "  <10 KiB : "
+	function3 "$numOfFiles2"
+	
+	# 100 KiB	
+	printf "  <100 KiB: "
+	function3 "$numOfFiles3"
+
+	# 1 MiB
+	printf "  <1 MiB  : "
+	function3 "$numOfFiles4"
+	
+	# 10 MiB
+	printf "  <10 MiB : "
+	function3 "$numOfFiles5"
+
+	# 100 MiB
+	printf "  <100 MiB: "
+	function3 "$numOfFiles6"
+	
+	# 1 GiB
+	printf "  <1 GiB  : "
+	function3 "$numOfFiles7"
+
+	# >= 1 GiB
+	printf "  >=1 GiB : "
+	function3 "$numOfFiles8"
+fi
+	
+exit 0
