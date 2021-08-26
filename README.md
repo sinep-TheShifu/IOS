@@ -1,5 +1,4 @@
 # IOS
-
 Operační systémy
 
 1. Projekt 10b / 15b
